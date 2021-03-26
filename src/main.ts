@@ -23,6 +23,7 @@ async function run() {
   const ignoreFail = core.getInput('ignore_fail', { required: false });
   const autoApprove = core.getInput('auto_approve', { required: false });
   const personalToken = core.getInput('personal_token', { required: false });
+  const personalTokenMerge = core.getInput('token_merge', { required: false });
 
   try {
     let pr = await octokit.pulls.create({ owner: context.repo.owner, repo: context.repo.repo, title: prTitle, head: owner + ':' + head, base: base, body: prMessage, merge_method: mergeMethod, maintainer_can_modify: false });
@@ -38,7 +39,18 @@ async function run() {
         await octokitUser.pulls.createReview({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.data.number, event: "APPROVE" });
       }
     }
-    await octokit.pulls.merge({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.data.number });
+    if (personalTokenMerge) {
+      if (!personalToken){
+        console.log('Cannot Merge, please set "personal_token"-variable');
+      }
+      else {
+        const octokitUser = new MyOctokit({auth: personalToken});
+        await octokitUser.pulls.merge({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.data.number });
+      }
+    }
+    else {
+        await octokit.pulls.merge({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.data.number });
+    }
   } catch (error) {
     if (error.request.request.retryCount) {
       console.log(
